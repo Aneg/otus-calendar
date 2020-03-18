@@ -1,0 +1,5 @@
+{
+  "http_listen" : "127.0.0.1:8881",
+  "log_file": "logs/logs.log",
+  "log_level": "info"
+}
