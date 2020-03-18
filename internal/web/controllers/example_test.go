@@ -20,7 +20,7 @@ func TestExample_Index(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := http.Request{}
-	c.Index(w, &r, []httprouter.Param{})
+	c.Hello(w, &r, []httprouter.Param{})
 
 	if w.Code != 200 {
 		t.Error("status is not ok: ", w.Code)

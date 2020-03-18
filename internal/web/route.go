@@ -13,6 +13,6 @@ func Init(conf *internal.Config) {
 
 	Router = httprouter.New()
 	{
-		Router.GET("/example", ExampleController.Index)
+		Router.GET("/hello", ExampleController.Hello)
 	}
 }
