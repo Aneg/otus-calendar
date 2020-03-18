@@ -16,6 +16,7 @@ type Example struct {
 }
 
 func (c *Example) Index(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	log.Logger.Info("Request: Example.Index")
 	if _, err := w.Write([]byte("Hi")); err != nil {
 		log.Logger.Error(err.Error())
 	}
