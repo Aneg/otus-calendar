@@ -1,18 +1,18 @@
 package controllers
 
 import (
-	"github.com/Aneg/calendar/internal"
+	"github.com/Aneg/calendar/internal/config"
 	"github.com/Aneg/calendar/pkg/log"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
 
-func NewExample(c *internal.Config) *Example {
+func NewExample(c *config.Config) *Example {
 	return &Example{c: c}
 }
 
 type Example struct {
-	c *internal.Config
+	c *config.Config
 }
 
 func (c *Example) Hello(w http.ResponseWriter, r *http.Request, p httprouter.Params) {

@@ -2,19 +2,17 @@ package main
 
 import (
 	"flag"
-	"github.com/Aneg/calendar/internal"
+	"github.com/Aneg/calendar/internal/config"
 	"github.com/Aneg/calendar/internal/web"
 	log2 "github.com/Aneg/calendar/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
 	"net/http"
 )
 
 func main() {
-	config, err := loadConfig(getConfigDir())
+	config, err := config.GetConfigFromFile(getConfigDir())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,15 +26,6 @@ func main() {
 	if err := http.ListenAndServe(config.HttpListen, web.Router); err != nil {
 		log2.Logger.Fatal(err.Error())
 	}
-}
-
-func loadConfig(dir string) (c *internal.Config, err error) {
-	yamlFile, err := ioutil.ReadFile(dir)
-	if err != nil {
-		return
-	}
-	err = yaml.Unmarshal(yamlFile, &c)
-	return
 }
 
 func getLogger(logFile, logLevel string) (logger *zap.Logger, err error) {
@@ -67,7 +56,7 @@ func getLogger(logFile, logLevel string) (logger *zap.Logger, err error) {
 
 func getConfigDir() string {
 	var configDir string
-	flag.StringVar(&configDir, "config", "config.yaml", "path to config file")
+	flag.StringVar(&configDir, "config", "configs/config.yaml", "path to config file")
 	flag.Parse()
 	return configDir
 }

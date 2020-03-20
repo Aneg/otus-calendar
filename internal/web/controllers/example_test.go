@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/Aneg/calendar/internal"
+	"github.com/Aneg/calendar/internal/config"
 	"github.com/Aneg/calendar/pkg/log"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
@@ -14,7 +14,7 @@ import (
 func TestExample_Index(t *testing.T) {
 
 	log.Logger = zap.NewExample()
-	conf := internal.Config{}
+	conf := config.Config{}
 
 	c := NewExample(&conf)
 
