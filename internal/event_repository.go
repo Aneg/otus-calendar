@@ -7,8 +7,8 @@ import (
 
 type CalendarRepository interface {
 	AddEvent(event *models.Event) error
-	DropEvent(dt time.Time) error
+	DropEvent(uesrId uint, dt time.Time) error
 	EditEvent(dt time.Time, event *models.Event) error
-	GetEvent(dt time.Time) (models.Event, error)
-	All() []models.Event
+	GetEvent(userId uint, dt time.Time) (models.Event, error)
+	All(userId uint) []models.Event
 }

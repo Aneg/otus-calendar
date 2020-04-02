@@ -3,27 +3,46 @@ package main
 import (
 	"flag"
 	"github.com/Aneg/calendar/internal/config"
+	"github.com/Aneg/calendar/internal/repositories"
 	"github.com/Aneg/calendar/internal/web"
 	log2 "github.com/Aneg/calendar/pkg/log"
+	calendar "github.com/Aneg/calendar/proto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"log"
+	"net"
 	"net/http"
 )
 
 func main() {
-	config, err := config.GetConfigFromFile(getConfigDir())
+	conf, err := config.GetConfigFromFile(getConfigDir())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log2.Logger, err = getLogger(config.LogFile, config.LogLevel)
+	log2.Logger, err = getLogger(conf.LogFile, conf.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	web.Init(config)
-	if err := http.ListenAndServe(config.HttpListen, web.Router); err != nil {
+	web.Init(conf)
+
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
+	if err != nil {
+		log2.Logger.Fatal(err.Error())
+	}
+
+	grpcServer := grpc.NewServer()
+	reflection.Register(grpcServer)
+
+	calendarServer := &web.CalendarServer{CalendarRepository: repositories.NewCalendarMap()}
+
+	calendar.RegisterCalendarCheckerServer(grpcServer, calendarServer)
+	grpcServer.Serve(lis)
+
+	if err := http.ListenAndServe(conf.HttpListen, web.Router); err != nil {
 		log2.Logger.Fatal(err.Error())
 	}
 }

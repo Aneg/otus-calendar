@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package calendar;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "calendar";
+
+
+service CalendarChecker {
+  rpc AddEvent (AddEventRequest) returns (SuccessResponse) {};
+  rpc DropEvent (DropEventRequest) returns (SuccessResponse) {};
+  rpc EditEvent (EditEventRequest) returns (SuccessResponse) {};
+  rpc GetEvent (GetEventRequest) returns (GetEventResponse) {};
+  rpc AllEvent (AllRequest) returns (AllResponse) {};
+
+}
+
+message Event {
+  uint32 user_id = 1;
+  int32 duration = 2;
+  google.protobuf.Timestamp datetime = 3;
+  string description = 4;
+}
+
+message AddEventRequest {
+  Event event = 1;
+}
+
+message SuccessResponse {
+  bool success = 1;
+}
+
+message DropEventRequest {
+  uint32 user_id = 1;
+  google.protobuf.Timestamp datetime = 2;
+}
+
+message EditEventRequest {
+  google.protobuf.Timestamp old_datetime = 3;
+  Event new_event = 2;
+}
+
+message GetEventRequest {
+  uint32 user_id = 1;
+  google.protobuf.Timestamp datetime = 2;
+}
+
+message GetEventResponse {
+  Event event = 1;
+}
+
+message AllRequest {
+  uint32 user_id = 1;
+}
+
+message AllResponse {
+  repeated Event events = 1;
+}

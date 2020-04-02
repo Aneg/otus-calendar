@@ -2,8 +2,9 @@ package models
 
 import "time"
 
-func NewEvent(DateTime time.Time, Duration int, Description string) Event {
+func NewEvent(UserId uint, DateTime time.Time, Duration int, Description string) Event {
 	return Event{
+		UserId:      UserId,
 		dateTime:    DateTime,
 		Duration:    Duration,
 		description: Description,
@@ -11,6 +12,7 @@ func NewEvent(DateTime time.Time, Duration int, Description string) Event {
 }
 
 type Event struct {
+	UserId      uint
 	dateTime    time.Time
 	Duration    int
 	description string
