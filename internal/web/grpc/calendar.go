@@ -1,11 +1,12 @@
-package web
+package grpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/Aneg/calendar/internal"
 	"github.com/Aneg/calendar/internal/models"
 	calendar "github.com/Aneg/calendar/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"time"
@@ -16,7 +17,9 @@ type CalendarServer struct {
 }
 
 func (s *CalendarServer) DropEvent(ctx context.Context, req *calendar.DropEventRequest) (*calendar.SuccessResponse, error) {
-	err := s.CalendarRepository.DropEvent(uint(req.UserId), time.Unix(req.Datetime.GetSeconds(), int64(req.Datetime.GetNanos())))
+	dt := time.Unix(req.Datetime.GetSeconds(), int64(req.Datetime.GetNanos()))
+	fmt.Println(dt.String(), dt, dt.Second(), dt.Nanosecond())
+	err := s.CalendarRepository.DropEvent(uint(req.UserId), dt)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -37,13 +40,14 @@ func (s *CalendarServer) GetEvent(ctx context.Context, req *calendar.GetEventReq
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	dt, err := ptypes.TimestampProto(event.GetDateTime())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	return &calendar.GetEventResponse{Event: &calendar.Event{
-		UserId:   uint32(event.UserId),
-		Duration: int32(event.GetDuration()),
-		Datetime: &timestamp.Timestamp{
-			Seconds: int64(event.GetDateTime().Second()),
-			Nanos:   int32(event.GetDateTime().Nanosecond()),
-		},
+		UserId:      uint32(event.UserId),
+		Duration:    int32(event.GetDuration()),
+		Datetime:    dt,
 		Description: event.GetDescription(),
 	}}, nil
 }
@@ -53,13 +57,15 @@ func (s *CalendarServer) AllEvent(ctx context.Context, req *calendar.AllRequest)
 	events := s.CalendarRepository.All(uint(req.UserId))
 	responseEvents := make([]*calendar.Event, 0, len(events))
 	for _, event := range events {
+		dt, err := ptypes.TimestampProto(event.GetDateTime())
+		if err != nil {
+			// Не уверен, что хорошее решение фэйлить запрос если одна дата кривая
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 		responseEvents = append(responseEvents, &calendar.Event{
-			UserId:   uint32(event.UserId),
-			Duration: int32(event.GetDuration()),
-			Datetime: &timestamp.Timestamp{
-				Seconds: int64(event.GetDateTime().Second()),
-				Nanos:   int32(event.GetDateTime().Nanosecond()),
-			},
+			UserId:      uint32(event.UserId),
+			Duration:    int32(event.GetDuration()),
+			Datetime:    dt,
 			Description: event.GetDescription(),
 		})
 	}

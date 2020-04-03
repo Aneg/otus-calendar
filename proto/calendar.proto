@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 option go_package = "calendar";
 
 
-service CalendarChecker {
+service Calendar {
   rpc AddEvent (AddEventRequest) returns (SuccessResponse) {};
   rpc DropEvent (DropEventRequest) returns (SuccessResponse) {};
   rpc EditEvent (EditEventRequest) returns (SuccessResponse) {};

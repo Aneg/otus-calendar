@@ -5,6 +5,7 @@ import (
 	"github.com/Aneg/calendar/internal/config"
 	"github.com/Aneg/calendar/internal/repositories"
 	"github.com/Aneg/calendar/internal/web"
+	grpc2 "github.com/Aneg/calendar/internal/web/grpc"
 	log2 "github.com/Aneg/calendar/pkg/log"
 	calendar "github.com/Aneg/calendar/proto"
 	"go.uber.org/zap"
@@ -37,9 +38,9 @@ func main() {
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 
-	calendarServer := &web.CalendarServer{CalendarRepository: repositories.NewCalendarMap()}
+	calendarServer := &grpc2.CalendarServer{CalendarRepository: repositories.NewCalendarMap()}
 
-	calendar.RegisterCalendarCheckerServer(grpcServer, calendarServer)
+	calendar.RegisterCalendarServer(grpcServer, calendarServer)
 	grpcServer.Serve(lis)
 
 	if err := http.ListenAndServe(conf.HttpListen, web.Router); err != nil {
