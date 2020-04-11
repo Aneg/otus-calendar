@@ -4,7 +4,7 @@ package calendar;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "calendar";
+option go_package = "api;calendar";
 
 
 service Calendar {
@@ -12,7 +12,7 @@ service Calendar {
   rpc DropEvent (DropEventRequest) returns (SuccessResponse) {};
   rpc EditEvent (EditEventRequest) returns (SuccessResponse) {};
   rpc GetEvent (GetEventRequest) returns (GetEventResponse) {};
-  rpc AllEvent (AllRequest) returns (AllResponse) {};
+  rpc AllEvents (AllEventsRequest) returns (AllEventsResponse) {};
 
 }
 
@@ -50,10 +50,10 @@ message GetEventResponse {
   Event event = 1;
 }
 
-message AllRequest {
+message AllEventsRequest {
   uint32 user_id = 1;
 }
 
-message AllResponse {
+message AllEventsResponse {
   repeated Event events = 1;
 }

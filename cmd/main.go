@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"github.com/Aneg/calendar/internal/config"
-	"github.com/Aneg/calendar/internal/repositories"
+	"github.com/Aneg/calendar/internal/repositories/memory"
+	calendar2 "github.com/Aneg/calendar/internal/services/calendar"
 	"github.com/Aneg/calendar/internal/web"
 	grpc2 "github.com/Aneg/calendar/internal/web/grpc"
+	calendar3 "github.com/Aneg/calendar/pkg/api"
 	log2 "github.com/Aneg/calendar/pkg/log"
-	calendar "github.com/Aneg/calendar/proto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -38,9 +39,9 @@ func main() {
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 
-	calendarServer := &grpc2.CalendarServer{CalendarRepository: repositories.NewCalendarMap()}
+	calendarServer := &grpc2.CalendarServer{Calendar: calendar2.NewCalendarService(memory.NewCalendarMap())}
 
-	calendar.RegisterCalendarServer(grpcServer, calendarServer)
+	calendar3.RegisterCalendarServer(grpcServer, calendarServer)
 	grpcServer.Serve(lis)
 
 	if err := http.ListenAndServe(conf.HttpListen, web.Router); err != nil {

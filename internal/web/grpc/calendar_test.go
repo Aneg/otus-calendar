@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/Aneg/calendar/internal/models"
-	"github.com/Aneg/calendar/internal/repositories"
-	calendar "github.com/Aneg/calendar/proto"
+	"github.com/Aneg/calendar/internal/repositories/memory"
+	calendar2 "github.com/Aneg/calendar/internal/services/calendar"
+	calendar "github.com/Aneg/calendar/pkg/api"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,20 +18,18 @@ import (
 	"time"
 )
 
-var lis net.Listener
-
-func init() {
-	var err error
-	lis, err = net.Listen("tcp", "0.0.0.0:50051")
+func getListener() net.Listener {
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
 		log.Fatalf("failed to listen %v", err)
 	}
+	return lis
 }
 
 func TestCalendarServer_AddEvent(t *testing.T) {
-	calendarRepository := repositories.NewCalendarMap()
-	server := initServer(&CalendarServer{CalendarRepository: calendarRepository})
-	go server.Serve(lis)
+	service := calendar2.NewCalendarService(memory.NewCalendarMap())
+	server := initServer(&CalendarServer{Calendar: service})
+	go server.Serve(getListener())
 	defer server.Stop()
 
 	client, cc := initClient()
@@ -53,13 +52,13 @@ func TestCalendarServer_AddEvent(t *testing.T) {
 		}
 	}
 
-	if calendarLen := len(calendarRepository.All(1)); calendarLen != 1 {
+	if calendarLen := len(service.All(1)); calendarLen != 1 {
 		t.Error("calendar len ", calendarLen)
 	}
 }
 
 func TestCalendarServer_AllEvent(t *testing.T) {
-	calendarRepository := repositories.NewCalendarMap()
+	calendarRepository := memory.NewCalendarMap()
 	e := models.NewEvent(1, time.Now(), 2, "test 1")
 	calendarRepository.AddEvent(&e)
 	e = models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
@@ -67,8 +66,9 @@ func TestCalendarServer_AllEvent(t *testing.T) {
 	e = models.NewEvent(2, time.Now(), 2, "test 3")
 	calendarRepository.AddEvent(&e)
 
-	server := initServer(&CalendarServer{CalendarRepository: calendarRepository})
-	go server.Serve(lis)
+	service := calendar2.NewCalendarService(calendarRepository)
+	server := initServer(&CalendarServer{Calendar: service})
+	go server.Serve(getListener())
 	defer server.Stop()
 
 	client, cc := initClient()
@@ -77,7 +77,7 @@ func TestCalendarServer_AllEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 400*time.Millisecond)
 	defer cancel()
 
-	grade, err := client.AllEvent(ctx, &calendar.AllRequest{UserId: 1})
+	grade, err := client.AllEvents(ctx, &calendar.AllEventsRequest{UserId: 1})
 	if err != nil {
 		handlerError(err, t)
 	} else {
@@ -92,7 +92,7 @@ func TestCalendarServer_AllEvent(t *testing.T) {
 }
 
 func TestCalendarServer_DropEvent(t *testing.T) {
-	calendarRepository := repositories.NewCalendarMap()
+	calendarRepository := memory.NewCalendarMap()
 	eventForDrop := models.NewEvent(1, time.Now(), 2, "test 1")
 	calendarRepository.AddEvent(&eventForDrop)
 	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
@@ -100,8 +100,9 @@ func TestCalendarServer_DropEvent(t *testing.T) {
 	e = models.NewEvent(2, time.Now(), 2, "test 3")
 	calendarRepository.AddEvent(&e)
 
-	server := initServer(&CalendarServer{CalendarRepository: calendarRepository})
-	go server.Serve(lis)
+	service := calendar2.NewCalendarService(calendarRepository)
+	server := initServer(&CalendarServer{Calendar: service})
+	go server.Serve(getListener())
 	defer server.Stop()
 
 	client, cc := initClient()
@@ -128,15 +129,17 @@ func TestCalendarServer_DropEvent(t *testing.T) {
 }
 
 func TestCalendarServer_EditEvent(t *testing.T) {
-	calendarRepository := repositories.NewCalendarMap()
+	calendarRepository := memory.NewCalendarMap()
 	eventForEdit := models.NewEvent(1, time.Now(), 2, "test 1")
 	calendarRepository.AddEvent(&eventForEdit)
 	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
 	calendarRepository.AddEvent(&e)
 	e = models.NewEvent(2, time.Now(), 2, "test 3")
 	calendarRepository.AddEvent(&e)
-	server := initServer(&CalendarServer{CalendarRepository: calendarRepository})
-	go server.Serve(lis)
+	service := calendar2.NewCalendarService(calendarRepository)
+	server := initServer(&CalendarServer{Calendar: service})
+
+	go server.Serve(getListener())
 	defer server.Stop()
 
 	client, cc := initClient()
@@ -167,15 +170,17 @@ func TestCalendarServer_EditEvent(t *testing.T) {
 }
 
 func TestCalendarServer_GetEvent(t *testing.T) {
-	calendarRepository := repositories.NewCalendarMap()
+	calendarRepository := memory.NewCalendarMap()
 	eventForGet := models.NewEvent(1, time.Now(), 2, "test 1")
 	calendarRepository.AddEvent(&eventForGet)
 	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
 	calendarRepository.AddEvent(&e)
 	e = models.NewEvent(2, time.Now(), 2, "test 3")
 	calendarRepository.AddEvent(&e)
-	server := initServer(&CalendarServer{CalendarRepository: calendarRepository})
-	go server.Serve(lis)
+	service := calendar2.NewCalendarService(calendarRepository)
+	server := initServer(&CalendarServer{Calendar: service})
+
+	go server.Serve(getListener())
 	defer server.Stop()
 
 	client, cc := initClient()
@@ -203,7 +208,7 @@ func initClient() (calendar.CalendarClient, *grpc.ClientConn) {
 	return calendar.NewCalendarClient(cc), cc
 }
 
-func initServer(calendarServer *CalendarServer) *grpc.Server {
+func initServer(calendarServer calendar.CalendarServer) *grpc.Server {
 	server := grpc.NewServer()
 	reflection.Register(server)
 
