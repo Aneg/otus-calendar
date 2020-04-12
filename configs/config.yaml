@@ -1,5 +1,11 @@
 {
   "http_listen" : "127.0.0.1:8881",
   "log_file": "logs/logs.log",
-  "log_level": "info"
+  "log_level": "info",
+
+  "db_host": "127.0.0.1"
+  "db_name": "calendar"
+  "db_port": "5433"
+  "db_user": "postgres"
+  "db_pass": "changeme"
 }
