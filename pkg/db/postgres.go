@@ -4,20 +4,18 @@ import (
 	"fmt"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
-	"log"
 )
 
-import (
-	_ "github.com/jackc/pgx/stdlib"
-)
-
-func PostgresOpenConnection(user, pass, host, db string) (*sqlx.DB, error) {
-	conn, errOpen := sqlx.Open(`postgres`, fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=True",
-		user,
-		pass,
-		host,
-		db,
-	))
+func PostgresOpenConnection(user, pass, host, port, db string) (*sqlx.DB, error) {
+	conn, errOpen := sqlx.Open(
+		`pgx`,
+		fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			host,
+			port,
+			user,
+			pass,
+			db,
+		))
 
 	if errOpen != nil {
 		return nil, errOpen
