@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/Aneg/calendar/internal/config"
 	"github.com/Aneg/calendar/internal/repositories/memory"
+	"github.com/Aneg/calendar/internal/repositories/postgres"
 	calendar2 "github.com/Aneg/calendar/internal/services/calendar"
 	"github.com/Aneg/calendar/internal/web"
 	grpc2 "github.com/Aneg/calendar/internal/web/grpc"
@@ -39,7 +40,7 @@ func main() {
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 
-	calendarServer := &grpc2.CalendarServer{Calendar: calendar2.NewCalendarService(memory.NewCalendarMap())}
+	calendarServer := &grpc2.CalendarServer{Calendar: calendar2.NewCalendarService(postgres.NewEventRepository())}
 
 	calendar3.RegisterCalendarServer(grpcServer, calendarServer)
 	grpcServer.Serve(lis)

@@ -3,7 +3,6 @@ package calendar
 import (
 	"github.com/Aneg/calendar/internal/models"
 	"github.com/Aneg/calendar/internal/repositories"
-	"time"
 )
 
 func NewCalendarService(repository repositories.CalendarRepository) *CalendarService {
@@ -14,22 +13,23 @@ type CalendarService struct {
 	repository repositories.CalendarRepository
 }
 
-func (c CalendarService) AddEvent(event *models.Event) error {
-	return c.repository.AddEvent(event)
+func (c CalendarService) AddEvent(event *models.Event) (err error) {
+	event.Id, err = c.repository.AddEvent(event)
+	return err
 }
 
-func (c CalendarService) DropEvent(uesrId uint, dt time.Time) error {
-	return c.repository.DropEvent(uesrId, dt)
+func (c CalendarService) DropEvent(uesrId int32, id int32) error {
+	return c.repository.DropEvent(uesrId, id)
 }
 
-func (c CalendarService) EditEvent(dt time.Time, event *models.Event) error {
-	return c.repository.EditEvent(dt, event)
+func (c CalendarService) EditEvent(event *models.Event) error {
+	return c.repository.EditEvent(*event)
 }
 
-func (c CalendarService) GetEvent(userId uint, dt time.Time) (models.Event, error) {
-	return c.repository.GetEvent(userId, dt)
+func (c CalendarService) GetEvent(userId int32, id int32) (models.Event, error) {
+	return c.repository.GetEvent(userId, id)
 }
 
-func (c CalendarService) All(userId uint) []models.Event {
+func (c CalendarService) All(userId int32) ([]models.Event, error) {
 	return c.repository.All(userId)
 }

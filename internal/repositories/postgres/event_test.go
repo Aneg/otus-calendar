@@ -115,7 +115,7 @@ func TestEventRepository_EditEvent(t *testing.T) {
 			}
 
 			tt.args.event.Description = "test 2"
-			if err := e.EditEvent(&tt.args.event); (err != nil) != tt.wantErr {
+			if err := e.EditEvent(tt.args.event); (err != nil) != tt.wantErr {
 				t.Errorf("EditEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 

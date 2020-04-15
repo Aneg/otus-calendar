@@ -54,8 +54,8 @@ func (e EventRepository) DropEvent(uesrId int32, id int32) error {
 	return err
 }
 
-func (e EventRepository) EditEvent(event *models.Event) error {
-	if ok, err := e.CanAddEvent(event); err != nil {
+func (e EventRepository) EditEvent(event models.Event) error {
+	if ok, err := e.CanAddEvent(&event); err != nil {
 		return err
 	} else if !ok {
 		return errors.New("событие на данное время уже существует")

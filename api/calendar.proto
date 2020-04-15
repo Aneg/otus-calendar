@@ -8,19 +8,20 @@ option go_package = "api;calendar";
 
 
 service Calendar {
-  rpc AddEvent (AddEventRequest) returns (SuccessResponse) {};
+  rpc AddEvent (AddEventRequest) returns (EventResponse) {};
   rpc DropEvent (DropEventRequest) returns (SuccessResponse) {};
-  rpc EditEvent (EditEventRequest) returns (SuccessResponse) {};
-  rpc GetEvent (GetEventRequest) returns (GetEventResponse) {};
+  rpc EditEvent (EditEventRequest) returns (EventResponse) {};
+  rpc GetEvent (GetEventRequest) returns (EventResponse) {};
   rpc AllEvents (AllEventsRequest) returns (AllEventsResponse) {};
 
 }
 
 message Event {
-  uint32 user_id = 1;
-  int32 duration = 2;
-  google.protobuf.Timestamp datetime = 3;
-  string description = 4;
+  int32 id = 1;
+  int32 user_id = 2;
+  google.protobuf.Timestamp datetimefrom = 3;
+  google.protobuf.Timestamp datetimeto = 4;
+  string description = 5;
 }
 
 message AddEventRequest {
@@ -32,26 +33,26 @@ message SuccessResponse {
 }
 
 message DropEventRequest {
-  uint32 user_id = 1;
-  google.protobuf.Timestamp datetime = 2;
+  int32 user_id = 1;
+  int32 event_id = 2;
 }
 
 message EditEventRequest {
-  google.protobuf.Timestamp old_datetime = 3;
-  Event new_event = 2;
+  Event new_event = 1;
 }
 
 message GetEventRequest {
-  uint32 user_id = 1;
-  google.protobuf.Timestamp datetime = 2;
+  int32 user_id = 1;
+  int32 event_id = 2;
 }
 
-message GetEventResponse {
-  Event event = 1;
+message EventResponse {
+  bool success = 1;
+  Event event = 2;
 }
 
 message AllEventsRequest {
-  uint32 user_id = 1;
+  int32 user_id = 1;
 }
 
 message AllEventsResponse {

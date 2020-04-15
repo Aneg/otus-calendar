@@ -3,137 +3,73 @@ package memory
 import (
 	"errors"
 	"github.com/Aneg/calendar/internal/models"
-	"sort"
-	"time"
+	"math/rand"
 )
 
 func NewCalendarMap() *CalendarMap {
 	return &CalendarMap{
-		eventMap:  make(map[uint]map[int]map[time.Month]map[int]map[int]*models.Event, 10),
-		eventList: make(map[uint][]models.Event),
+		events: make(map[int32]map[int32]models.Event),
 	}
 }
 
 type CalendarMap struct {
-	eventMap  map[uint]map[int]map[time.Month]map[int]map[int]*models.Event
-	eventList map[uint][]models.Event
+	events map[int32]map[int32]models.Event
 }
 
-func (c *CalendarMap) AddEvent(event *models.Event) error {
-	if !c.TimeIsFree(event) {
-		return errors.New("время занято")
+func (c *CalendarMap) AddEvent(event *models.Event) (int32, error) {
+	for _, e := range c.events[event.UserId] {
+		if c.TimeIsNotFree(*event, e) {
+			return 0, errors.New("время занято")
+		}
 	}
-	dt := event.GetDateTime()
-	for h := 0; h < event.Duration; h++ {
-		if _, ok := c.eventMap[event.UserId][dt.Year()]; !ok {
-			c.eventMap[event.UserId] = make(map[int]map[time.Month]map[int]map[int]*models.Event)
-			c.eventMap[event.UserId][dt.Year()] = map[time.Month]map[int]map[int]*models.Event{}
-		}
-		if _, ok := c.eventMap[event.UserId][dt.Year()][dt.Month()]; !ok {
-			c.eventMap[event.UserId][dt.Year()][dt.Month()] = map[int]map[int]*models.Event{}
-		}
-		if _, ok := c.eventMap[event.UserId][dt.Year()][dt.Month()][dt.Day()]; !ok {
-			c.eventMap[event.UserId][dt.Year()][dt.Month()][dt.Day()] = map[int]*models.Event{}
-		}
-		if _, ok := c.eventMap[event.UserId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()]; !ok {
-			c.eventMap[event.UserId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()] = event
-		}
-
-		dt = dt.Add(time.Hour)
+	event.Id = rand.Int31()
+	if _, ok := c.events[event.UserId]; !ok {
+		c.events[event.UserId] = make(map[int32]models.Event)
 	}
+	c.events[event.UserId][event.Id] = *event
 
-	if c.eventList[event.UserId] == nil {
-		c.eventList[event.UserId] = []models.Event{*event}
-	} else {
-		c.eventList[event.UserId] = append(c.eventList[event.UserId], *event)
-	}
+	return event.Id, nil
+}
 
+func (c *CalendarMap) TimeIsNotFree(newEvent models.Event, oldEvent models.Event) bool {
+	return (newEvent.DateTimeFrom.After(oldEvent.DateTimeFrom) && newEvent.DateTimeTo.Before(oldEvent.DateTimeFrom)) ||
+		newEvent.DateTimeFrom.After(oldEvent.DateTimeTo) && newEvent.DateTimeTo.Before(oldEvent.DateTimeTo) ||
+		(oldEvent.DateTimeFrom.After(newEvent.DateTimeFrom) && oldEvent.DateTimeTo.Before(newEvent.DateTimeFrom)) ||
+		oldEvent.DateTimeFrom.After(newEvent.DateTimeTo) && oldEvent.DateTimeTo.Before(newEvent.DateTimeTo)
+}
+
+func (c *CalendarMap) DropEvent(uesrId int32, id int32) error {
+	delete(c.events[uesrId], id)
 	return nil
 }
 
-func (c *CalendarMap) TimeIsFree(event *models.Event) bool {
-	dt := event.GetDateTime()
-	for h := 0; h < event.Duration; h++ {
-		if _, ok := c.eventMap[event.UserId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()]; ok {
-			return false
-		}
-		dt.Add(time.Hour * time.Duration(1))
-	}
-	return true
-}
-
-func (c *CalendarMap) CanEdit(oldEvent *models.Event, newEvent *models.Event) bool {
-	dt := newEvent.GetDateTime()
-	for h := 0; h < newEvent.Duration; h++ {
-		if eOld, ok := c.eventMap[newEvent.UserId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()+h]; ok && eOld.GetDescription() != oldEvent.GetDescription() {
-			return false
+func (c *CalendarMap) EditEvent(event models.Event) error {
+	for _, e := range c.events[event.UserId] {
+		if e.Id != event.Id && c.TimeIsNotFree(event, e) {
+			return errors.New("время занято другими событиями")
 		}
 	}
-	return true
-}
-
-func (c *CalendarMap) DropEvent(uesrId uint, dt time.Time) error {
-	if e, ok := c.eventMap[uesrId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()]; !ok {
-		return errors.New("на данное время ничего не запланировано")
-	} else {
-		for h := 0; h < e.Duration; h++ {
-			if _, ok := c.eventMap[uesrId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()]; ok {
-				// todo: реализовать рекурсивное удаление пустых мап
-				delete(c.eventMap[uesrId][dt.Year()][dt.Month()][dt.Day()], dt.Hour())
-				if len(c.eventMap[uesrId][dt.Year()][dt.Month()][dt.Day()]) == 0 {
-					delete(c.eventMap[uesrId][dt.Year()][dt.Month()], dt.Day())
-					if len(c.eventMap[uesrId][dt.Year()][dt.Month()]) == 0 {
-						delete(c.eventMap[uesrId][dt.Year()], dt.Month())
-						if len(c.eventMap[uesrId][dt.Year()]) == 0 {
-							delete(c.eventMap[uesrId], dt.Year())
-						}
-					}
-				}
-			}
-			dt = dt.Add(time.Hour)
-		}
-		for i, event := range c.eventList[uesrId] {
-			if event.Duration == e.Duration && event.GetDateTime() == e.GetDateTime() && event.GetDescription() == e.GetDescription() {
-				copy(c.eventList[uesrId][i:], c.eventList[uesrId][i+1:])
-				c.eventList[uesrId] = c.eventList[uesrId][:len(c.eventList)-1]
-			}
-		}
+	if _, ok := c.events[event.UserId]; !ok {
+		c.events[event.UserId] = make(map[int32]models.Event)
 	}
+	c.events[event.UserId][event.Id] = event
 	return nil
 }
 
-func (c *CalendarMap) EditEvent(dt time.Time, event *models.Event) error {
-	// todo: внедрить мьютексы
-	oldEvent, ok := c.eventMap[event.UserId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()]
-	if !ok {
-		return errors.New("на данное время ничего не запланировано")
-	}
-
-	if c.CanEdit(oldEvent, event) {
-		if err := c.DropEvent(event.UserId, dt); err != nil {
-			return err
-		}
-		if err := c.AddEvent(event); err != nil {
-			return err
-		}
-
-		return nil
-	}
-	return errors.New("время занято другими событиями")
-}
-
-func (c *CalendarMap) GetEvent(userId uint, dt time.Time) (models.Event, error) {
-	if e, ok := c.eventMap[userId][dt.Year()][dt.Month()][dt.Day()][dt.Hour()]; !ok {
-		return models.Event{}, errors.New("на данное время ничего не запланировано")
+func (c *CalendarMap) GetEvent(userId int32, id int32) (models.Event, error) {
+	if e, ok := c.events[userId][id]; !ok {
+		return e, errors.New("событие не найдено")
 	} else {
-		return *e, nil
+		return e, nil
 	}
 }
 
-func (c *CalendarMap) All(userId uint) []models.Event {
-	sort.Slice(c.eventList[userId], func(i, j int) bool {
-		return c.eventList[userId][j].GetDateTime().Sub(c.eventList[userId][i].GetDateTime()).Hours() > 0
-	})
-	// единственная проблема - ссылки на события и значит его можно поменять
-	return c.eventList[userId]
+func (c *CalendarMap) All(userId int32) (events []models.Event, err error) {
+	if _, ok := c.events[userId]; !ok {
+		return events, errors.New("у данного пользователя нету событий")
+	}
+	for _, e := range c.events[userId] {
+		events = append(events, e)
+	}
+	return
 }

@@ -39,10 +39,10 @@ func TestCalendarServer_AddEvent(t *testing.T) {
 	defer cancel()
 
 	grade, err := client.AddEvent(ctx, &calendar.AddEventRequest{Event: &calendar.Event{
-		UserId:      1,
-		Duration:    3,
-		Datetime:    ptypes.TimestampNow(),
-		Description: "test",
+		UserId:       1,
+		Datetimefrom: ptypes.TimestampNow(),
+		Datetimeto:   ptypes.TimestampNow(),
+		Description:  "test",
 	}})
 	if err != nil {
 		handlerError(err, t)
@@ -52,18 +52,22 @@ func TestCalendarServer_AddEvent(t *testing.T) {
 		}
 	}
 
-	if calendarLen := len(service.All(1)); calendarLen != 1 {
+	allEvents, err := service.All(1)
+	if err != nil {
+		t.Error(err)
+	}
+	if calendarLen := len(allEvents); calendarLen != 1 {
 		t.Error("calendar len ", calendarLen)
 	}
 }
 
 func TestCalendarServer_AllEvent(t *testing.T) {
 	calendarRepository := memory.NewCalendarMap()
-	e := models.NewEvent(1, time.Now(), 2, "test 1")
+	e := models.NewEvent(1, time.Now(), time.Now().Add(2*time.Hour), "test 1")
 	calendarRepository.AddEvent(&e)
-	e = models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
+	e = models.NewEvent(1, time.Now().AddDate(0, 0, 2), time.Now().Add(24*2*time.Hour+2*time.Hour), "test 2")
 	calendarRepository.AddEvent(&e)
-	e = models.NewEvent(2, time.Now(), 2, "test 3")
+	e = models.NewEvent(2, time.Now(), time.Now().Add(2*time.Hour), "test 3")
 	calendarRepository.AddEvent(&e)
 
 	service := calendar2.NewCalendarService(calendarRepository)
@@ -86,18 +90,22 @@ func TestCalendarServer_AllEvent(t *testing.T) {
 		}
 	}
 
-	if calendarLen := len(calendarRepository.All(1)); calendarLen != 2 {
+	allEvents, err := service.All(2)
+	if err != nil {
+		t.Error(err)
+	}
+	if calendarLen := len(allEvents); calendarLen != 1 {
 		t.Error("calendar len ", calendarLen)
 	}
 }
 
 func TestCalendarServer_DropEvent(t *testing.T) {
 	calendarRepository := memory.NewCalendarMap()
-	eventForDrop := models.NewEvent(1, time.Now(), 2, "test 1")
+	eventForDrop := models.NewEvent(1, time.Now(), time.Now().Add(2*time.Hour), "test 1")
 	calendarRepository.AddEvent(&eventForDrop)
-	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
+	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), time.Now().Add(24*2*time.Hour+2*time.Hour), "test 2")
 	calendarRepository.AddEvent(&e)
-	e = models.NewEvent(2, time.Now(), 2, "test 3")
+	e = models.NewEvent(2, time.Now(), time.Now().Add(2*time.Hour), "test 3")
 	calendarRepository.AddEvent(&e)
 
 	service := calendar2.NewCalendarService(calendarRepository)
@@ -110,8 +118,7 @@ func TestCalendarServer_DropEvent(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 400*time.Millisecond)
 	defer cancel()
-	dt, _ := ptypes.TimestampProto(eventForDrop.GetDateTime())
-	grade, err := client.DropEvent(ctx, &calendar.DropEventRequest{UserId: 1, Datetime: dt})
+	grade, err := client.DropEvent(ctx, &calendar.DropEventRequest{UserId: 1, EventId: eventForDrop.Id})
 	if err != nil {
 		handlerError(err, t)
 	} else {
@@ -120,21 +127,25 @@ func TestCalendarServer_DropEvent(t *testing.T) {
 		}
 	}
 
-	if calendarLen := len(calendarRepository.All(1)); calendarLen != 1 {
+	allEvents, err := calendarRepository.All(1)
+	if err != nil {
+		t.Error(err)
+	}
+	if calendarLen := len(allEvents); calendarLen != 1 {
 		t.Error("calendar len ", calendarLen)
 	}
-	if e = calendarRepository.All(1)[0]; e.GetDateTime() == eventForDrop.GetDateTime() {
+	if e = allEvents[0]; e.Id == eventForDrop.Id {
 		t.Error("event not drop")
 	}
 }
 
 func TestCalendarServer_EditEvent(t *testing.T) {
 	calendarRepository := memory.NewCalendarMap()
-	eventForEdit := models.NewEvent(1, time.Now(), 2, "test 1")
+	eventForEdit := models.NewEvent(1, time.Now(), time.Now().Add(2*time.Hour), "test 1")
 	calendarRepository.AddEvent(&eventForEdit)
-	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
+	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), time.Now().Add(24*2*time.Hour+2*time.Hour), "test 2")
 	calendarRepository.AddEvent(&e)
-	e = models.NewEvent(2, time.Now(), 2, "test 3")
+	e = models.NewEvent(2, time.Now(), time.Now().Add(2*time.Hour), "test 3")
 	calendarRepository.AddEvent(&e)
 	service := calendar2.NewCalendarService(calendarRepository)
 	server := initServer(&CalendarServer{Calendar: service})
@@ -147,14 +158,16 @@ func TestCalendarServer_EditEvent(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 400*time.Millisecond)
 	defer cancel()
-	dt, _ := ptypes.TimestampProto(eventForEdit.GetDateTime())
+	dtf, _ := ptypes.TimestampProto(eventForEdit.DateTimeFrom)
+	dtt, _ := ptypes.TimestampProto(eventForEdit.DateTimeTo)
 	newEvent := calendar.Event{
-		UserId:      1,
-		Duration:    5,
-		Datetime:    dt,
-		Description: "new test 2",
+		Id:           eventForEdit.Id,
+		UserId:       1,
+		Datetimefrom: dtf,
+		Datetimeto:   dtt,
+		Description:  "new test 2",
 	}
-	grade, err := client.EditEvent(ctx, &calendar.EditEventRequest{OldDatetime: dt, NewEvent: &newEvent})
+	grade, err := client.EditEvent(ctx, &calendar.EditEventRequest{NewEvent: &newEvent})
 	if err != nil {
 		handlerError(err, t)
 	} else {
@@ -163,19 +176,19 @@ func TestCalendarServer_EditEvent(t *testing.T) {
 		}
 	}
 
-	curEvent, _ := calendarRepository.GetEvent(1, eventForEdit.GetDateTime())
-	if curEvent.GetDuration() != int(newEvent.GetDuration()) || curEvent.GetDescription() != newEvent.GetDescription() {
+	curEvent, _ := calendarRepository.GetEvent(1, eventForEdit.Id)
+	if curEvent.Id != newEvent.Id {
 		t.Error("events not edit")
 	}
 }
 
 func TestCalendarServer_GetEvent(t *testing.T) {
 	calendarRepository := memory.NewCalendarMap()
-	eventForGet := models.NewEvent(1, time.Now(), 2, "test 1")
+	eventForGet := models.NewEvent(1, time.Now(), time.Now().Add(2*time.Hour), "test 1")
 	calendarRepository.AddEvent(&eventForGet)
-	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), 2, "test 2")
+	e := models.NewEvent(1, time.Now().AddDate(0, 0, 2), time.Now().Add(24*2*time.Hour+2*time.Hour), "test 2")
 	calendarRepository.AddEvent(&e)
-	e = models.NewEvent(2, time.Now(), 2, "test 3")
+	e = models.NewEvent(2, time.Now(), time.Now().Add(2*time.Hour), "test 3")
 	calendarRepository.AddEvent(&e)
 	service := calendar2.NewCalendarService(calendarRepository)
 	server := initServer(&CalendarServer{Calendar: service})
@@ -189,12 +202,12 @@ func TestCalendarServer_GetEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 400*time.Millisecond)
 	defer cancel()
 
-	dt, _ := ptypes.TimestampProto(eventForGet.GetDateTime())
-	grade, err := client.GetEvent(ctx, &calendar.GetEventRequest{UserId: 1, Datetime: dt})
+	grade, err := client.GetEvent(ctx, &calendar.GetEventRequest{UserId: 1, EventId: eventForGet.Id})
 	if err != nil {
 		handlerError(err, t)
 	} else {
-		if grade.Event.Description != eventForGet.GetDescription() || grade.Event.GetDuration() != int32(eventForGet.GetDuration()) {
+
+		if grade.Event.Id != eventForGet.Id {
 			t.Error("event not equal")
 		}
 	}
