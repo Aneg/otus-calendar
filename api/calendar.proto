@@ -13,7 +13,6 @@ service Calendar {
   rpc EditEvent (EditEventRequest) returns (EventResponse) {};
   rpc GetEvent (GetEventRequest) returns (EventResponse) {};
   rpc AllEvents (AllEventsRequest) returns (AllEventsResponse) {};
-
 }
 
 message Event {
